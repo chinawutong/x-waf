@@ -6,9 +6,9 @@ import math
 from PIL import Image,ImageDraw,ImageFont,ImageFilter
 
 #字体的位置，不同版本的系统会有不同
-font_path = '/usr/local/openresty/nginx/conf/x-waf/fonts/arial.ttf'
+font_path = './fonts/arial.ttf'
 #生成几位数的验证码
-number = 4
+number = 5
 #生成验证码图片的高度和宽度
 size = (100,30)
 #背景颜色，默认为白色

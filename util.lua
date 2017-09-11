@@ -25,7 +25,7 @@ local cjson = require("cjson.safe")
 local string = require("string")
 local config = require("config")
 
-local _M = {
+local util = {
     version = "0.1",
     RULE_TABLE = {},
     RULE_FILES = {
@@ -41,9 +41,9 @@ local _M = {
 }
 
 -- Get all rule file name
-function _M.get_rule_files(rules_path)
+function util.get_rule_files(rules_path)
     local rule_files = {}
-    for _, file in ipairs(_M.RULE_FILES) do
+    for _, file in ipairs(util.RULE_FILES) do
         if file ~= "" then
             local file_name = rules_path .. '/' .. file
             ngx.log(ngx.DEBUG, string.format("rule key:%s, rule file name:%s", file, file_name))
@@ -55,8 +55,8 @@ end
 
 
 -- Load WAF rules into table when on nginx's init phase
-function _M.get_rules(rules_path)
-    local rule_files = _M.get_rule_files(rules_path)
+function util.get_rules(rules_path)
+    local rule_files = util.get_rule_files(rules_path)
     if rule_files == {} then
         return nil
     end
@@ -75,13 +75,13 @@ function _M.get_rules(rules_path)
             end
         end
         ngx.log(ngx.INFO, string.format("rule_name:%s, value:%s", rule_name, t_rule))
-        _M.RULE_TABLE[rule_name] = t_rule
+        util.RULE_TABLE[rule_name] = t_rule
     end
-    return(_M.RULE_TABLE)
+    return(util.RULE_TABLE)
 end
 
 -- Get the client IP
-function _M.get_client_ip()
+function util.get_client_ip()
     local CLIENT_IP = ngx.req.get_headers()["X_real_ip"]
     if CLIENT_IP == nil then
         CLIENT_IP = ngx.req.get_headers()["X_Forwarded_For"]
@@ -96,7 +96,7 @@ function _M.get_client_ip()
 end
 
 -- Get the client user agent
-function _M.get_user_agent()
+function util.get_user_agent()
     local USER_AGENT = ngx.var.http_user_agent
     if USER_AGENT == nil then
         USER_AGENT = "unknown"
@@ -104,13 +104,13 @@ function _M.get_user_agent()
     return USER_AGENT
 end
 -- get server's host
-function _M.get_server_host()
+function util.get_server_host()
     local host = ngx.req.get_headers()["Host"]
     return host
 end
 
 -- Get all rule file name by lfs
---function _M.get_rule_files(rules_path)
+--function util.get_rule_files(rules_path)
 --local lfs = require("lfs")
 --    local rule_files = {}
 --    for file in lfs.dir(rules_path) do
@@ -124,10 +124,10 @@ end
 --end
 
 -- WAF log record for json
-function _M.log_record(config_log_dir, method, url, data, ruletag)
+function util.log_record(config_log_dir, method, url, data, ruletag)
     local log_path = config_log_dir..'/'..method
-    local client_IP = _M.get_client_ip()
-    local user_agent = _M.get_user_agent()
+    local client_IP = util.get_client_ip()
+    local user_agent = util.get_user_agent()
     local server_name = ngx.var.server_name
     local local_time = ngx.localtime()
     local log_json_obj = {
@@ -135,7 +135,7 @@ function _M.log_record(config_log_dir, method, url, data, ruletag)
         local_time = local_time,
         server_name = server_name,
         user_agent = user_agent,
-        attack_method = method,
+        attackutilethod = method,
         req_url = url,
         req_data = data,
         rule_tag = ruletag,
@@ -162,22 +162,22 @@ function _M.log_record(config_log_dir, method, url, data, ruletag)
 end
 
 -- WAF response
-function _M.waf_output()
-    if config.config_waf_model == "redirect" then
+function util.waf_output()
+    if config.config_wafutilodel == "redirect" then
         ngx.redirect(config.config_waf_redirect_url, 301)
-    elseif config.config_waf_model == "jinghuashuiyue" then
-        local bad_guy_ip = _M.get_client_ip()
-        _M.set_bad_guys(bad_guy_ip, config.config_expire_time)
+    elseif config.config_wafutilodel == "jinghuashuiyue" then
+        local bad_guy_ip = util.get_client_ip()
+        util.set_bad_guys(bad_guy_ip, config.config_expire_time)
     else
         ngx.header.content_type = "text/html"
         ngx.status = ngx.HTTP_FORBIDDEN
-        ngx.say(string.format(config.config_output_html, _M.get_client_ip()))
+        ngx.say(string.format(config.config_output_html, util.get_client_ip()))
         ngx.exit(ngx.status)
     end
 end
 
 -- set bad guys ip to ngx.shared dict
-function _M.set_bad_guys(bad_guy_ip, expire_time)
+function util.set_bad_guys(bad_guy_ip, expire_time)
     local badGuys = ngx.shared.badGuys
     local req, _ = badGuys:get(bad_guy_ip)
     if req then
@@ -187,4 +187,6 @@ function _M.set_bad_guys(bad_guy_ip, expire_time)
     end
 end
 
-return _M
+-- others....
+
+return util

@@ -22,13 +22,17 @@ THE SOFTWARE.
 
 -- WAF config file, enable = "on", disable = "off"
 
-local _M = {
+local base_dir = "/usr/local/openresty"
+
+local config = {
+    -- base dir
+    config_base_dir = base_dir,
     -- waf status
     config_waf_enable = "on",
     -- log dir
     config_log_dir = "/tmp/waf_logs",
     -- rule setting
-    config_rule_dir = "/usr/local/openresty/nginx/conf/x-waf/rules",
+    config_rule_dir = base_dir.."/".."nginx/conf/x-waf/rules",
     -- enable/disable white url
     config_white_url_check = "on",
     -- enable/disable white ip
@@ -52,7 +56,7 @@ local _M = {
     -- config waf output redirect/html/jinghuashuiyue
     config_waf_model = "html",
     -- if config_waf_output ,setting url
-    config_waf_redirect_url = "http://xsec.io",
+    config_waf_redirect_url = "",
     config_expire_time = 600,
     config_output_html=[[
     <html>
@@ -142,4 +146,4 @@ local _M = {
     ]],
 }
 
-return _M
+return config

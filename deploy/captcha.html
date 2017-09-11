@@ -21,6 +21,46 @@
       <form class="fors" action="/verify-captcha.jpg" method="POST">
         <img class="yz" src="/get-captcha.jpg" alt="Captcha image"><input class="inp_s" type="text" name="response" /><input class="btn" type="submit" value="确定" />
       </form>
+      <button>hello</button>
+      <script>
+        var capchaChecked = false;
+          
+        $(function() {
+          refreshCaptcha();
+
+          $("#captcha").on("keyup", capchaCheInput);
+          $("#captchaImg").on("click", refreshCaptcha);
+          $("#submit").on("click", goLogin);
+        });
+
+        function checkCaptchaInput(){  
+          var captchaText =$(this).val()   
+          if(captchaText.length <=3 ){ //验证码一般大于三位  
+            $("#captchaChecked").hide();  
+            return;  
+          }  
+              
+        ajaxRequest("/servlet/auth/verifyCaptcha", {captcha : captchaText},  
+                function callback(result) {  
+                    if(result.code == "40001"){  
+                        if(result.data==true){  
+                            $("#captchaChecked").show();  
+                            captchaChecked = true;  
+                        }else{  
+                            $("#captchaChecked").hide();  
+                            captchaChecked = false;  
+                        }  
+                    }else{  
+                        alert(result.message);  
+                    }  
+                });  
+                  
+                if(event.keyCode==13){  
+                    goLogin();  
+                }  
+        }
+
+      </script>
     </div>
   </body>
 </html>

@@ -121,20 +121,33 @@ function waf.cc_attack_check()
         local CCcount = tonumber(string.match(config.config_cc_rate, '(.*)/'))
         local CCseconds = tonumber(string.match(config.config_cc_rate, '/(.*)'))
         local req,_ = limit:get(CC_TOKEN)
+
+
         if req then
             if req > CCcount then
+                local preurl = ngx.var["cookie_preurl"]
+
                 util.log_record(config.config_log_dir, 'CC_Attack', ngx.var.request_uri, "-", "-")
+
                 if config.config_waf_enable == "on" then
-                    ngx.redirect("captcha.html")
-                    --if return == true then
-                    --    return ture
+                    ngx.header.content_type = "text/html"
+                    ngx.print(string.format(config.config_captcha_html))
+                    ngx.exit(200)
+                end
+
+                if ngx.re.match(ngx.var.uri, "/verifycap", "jo") then
+                    local args = ngx.req.get_post_args()
+                    local res = ngx.location.capture("/verify/ashx/system/nginxauth.ashx", { method = ngx.HTTP_POST, args = args })
+                    if res.body == "success" then
+                    --    limit:set(CC_TOKEN, 1, CCseconds)
+                        ngx.status = res.status
+                        ngx.print(res.body)
                     --else
-                    --    ngx.header.content_type = "text/html"
-                    --    ngx.print(config_base_dir.."/".."html/recaptcha.html")
-                     --   ngx.exit(200)
-                    --end
-                else
-                    ngx.print("hello")    --ngx.exit(403)
+                        --ngx.header.content_type = "text/html"
+                        --ngx.print(string.format(config.config_captcha_html))
+                        --ngx.exit(200) 
+                    --ngx.redirect("/")
+                    end
                 end
             else
                 limit:incr(CC_TOKEN, 1)

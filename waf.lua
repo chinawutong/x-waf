@@ -127,7 +127,7 @@ function waf.cc_attack_check()
             if req > CCcount then
                 local preurl = ngx.var["cookie_preurl"]
 
-                util.log_record(config.config_log_dir, 'CC_Attack', ngx.var.request_uri, "-", "-")
+                util.log_record(config.config_log_dir, 'maybe CC_Attack', ngx.var.request_uri, "-", "-")
 
                 if config.config_waf_enable == "on" then
                     ngx.header.content_type = "text/html"
@@ -135,20 +135,8 @@ function waf.cc_attack_check()
                     ngx.exit(200)
                 end
 
-                if ngx.re.match(ngx.var.uri, "/verifycap", "jo") then
-                    local args = ngx.req.get_post_args()
-                    local res = ngx.location.capture("/verify/ashx/system/nginxauth.ashx", { method = ngx.HTTP_POST, args = args })
-                    if res.body == "success" then
-                    --    limit:set(CC_TOKEN, 1, CCseconds)
-                        ngx.status = res.status
-                        ngx.print(res.body)
-                    --else
-                        --ngx.header.content_type = "text/html"
-                        --ngx.print(string.format(config.config_captcha_html))
-                        --ngx.exit(200) 
-                    --ngx.redirect("/")
-                    end
-                end
+                --if 
+
             else
                 limit:incr(CC_TOKEN, 1)
             end

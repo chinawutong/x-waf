@@ -121,21 +121,30 @@ function waf.cc_attack_check()
         local CCcount = tonumber(string.match(config.config_cc_rate, '(.*)/'))
         local CCseconds = tonumber(string.match(config.config_cc_rate, '/(.*)'))
         local req,_ = limit:get(CC_TOKEN)
-
-
         if req then
             if req > CCcount then
-                local preurl = ngx.var["cookie_preurl"]
-
-                util.log_record(config.config_log_dir, 'maybe CC_Attack', ngx.var.request_uri, "-", "-")
-
                 if config.config_waf_enable == "on" then
                     ngx.header.content_type = "text/html"
                     ngx.print(string.format(config.config_captcha_html))
                     ngx.exit(200)
+                    util.log_record(config.config_log_dir, 'captcha request', ngx.var.request_uri, "-", "-")
                 end
 
-                --if 
+                if v.action == "set_cookie" then
+				    local token = ngx.md5(v.set_cookie[1] .. ip)
+				    local token_name = v.set_cookie[2] or "token"
+				    -- 没有设置 tokenname 默认就是 token
+	                if ngx_var["cookie_"..token_name] ~= token then
+	                    ngx.header["Set-Cookie"] = {token_name.."=" .. token}
+	                    if method == "POST" then
+	                 	return ngx.redirect(request_uri,307)
+	                    else
+	                     	return ngx.redirect(request_uri)
+	                    end
+	                end
+			    elseif v.action == "set_url" then
+                end
+
 
             else
                 limit:incr(CC_TOKEN, 1)

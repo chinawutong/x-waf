@@ -40,6 +40,19 @@ local util = {
     }
 }
 
+--local redis = require "resty.redis"
+--local red = redis:new()
+--red:set_timeout(2000)
+--local ok, err = red:connect("172.17.0.3", "6379")
+
+--if not ok then
+--    local _msg = "failed to connect: "..tostring(err)
+--    sayHtml_ext({code="error",msg=_msg})
+--    --ngx.say("failed to connect: ", err)
+--    return
+--end
+
+
 -- Get all rule file name
 function util.get_rule_files(rules_path)
     local rule_files = {}

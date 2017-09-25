@@ -24,6 +24,7 @@ local io = require("io")
 local cjson = require("cjson.safe")
 local string = require("string")
 local config = require("config")
+local redis = require("resty.redis")
 
 local _M = {
     version = "0.1",
@@ -46,16 +47,45 @@ function _M.get_rule_files(rules_path)
     for _, file in ipairs(_M.RULE_FILES) do
         if file ~= "" then
             local file_name = rules_path .. '/' .. file
-            ngx.log(ngx.DEBUG, string.format("rule key:%s, rule file name:%s", file, file_name))
+            --ngx.log(ngx.DEBUG, string.format("rule key:%s, rule file name:%s", file, file_name))
             rule_files[file] = file_name
         end
     end
     return rule_files
 end
 
+function _M.get_rules(rules_path)
+    local red = redis:new()
+    red:set_timeout(1000)
+    local redcon, err = red:connect("172.17.0.2", 6379)
+    if not redcon then
+        --ngx.log(ngx.DEBUG, string.format("failed to connett:" err))
+        return
+    end
+    local rule_files = {}
+    for _, file in ipairs(_M.RULE_FILES) do
+        if file ~= "" then
+            rule_files[file] = redcon:get(file)
+        end
+    end
+    for rule_name, rule_file in pairs(rule_files) do
+        local t_rule = {}
+        local table_rules = cjson.decode(rule_file)
+        if table_rules ~= nil then
+            ngx.log(ngx.INFO, string.format("%s:%s", table_rules, type(table_rules)))
+            for _, table_name in pairs(table_rules) do
+                table.insert(t_rule, table_name["RuleItem"])
+            end
+        end
+        ngx.log(ngx.INFO, string.format("rule_name:%s, value:%s", rule_name, t_rule))
+        _M.RULE_TABLE[rule_name] = t_rule
+    end
+    return(_M.RULE_TABLE)
+end
+
 
 -- Load WAF rules into table when on nginx's init phase
-function _M.get_rules(rules_path)
+function _M.get_rules_old(rules_path)
     local rule_files = _M.get_rule_files(rules_path)
     if rule_files == {} then
         return nil
@@ -79,6 +109,8 @@ function _M.get_rules(rules_path)
     end
     return(_M.RULE_TABLE)
 end
+
+
 
 -- Get the client IP
 function _M.get_client_ip()

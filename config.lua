@@ -22,13 +22,19 @@ THE SOFTWARE.
 
 -- WAF config file, enable = "on", disable = "off"
 
-local _M = {
+local base_dir = "/usr/local/openresty"
+
+local config = {
+    -- base dir
+    config_base_dir = base_dir,
     -- waf status
     config_waf_enable = "on",
     -- log dir
     config_log_dir = "/tmp/waf_logs",
     -- rule setting
-    config_rule_dir = "/usr/local/openresty/nginx/conf/x-waf/rules",
+    config_rule_dir = base_dir.."/nginx/conf/x-waf/rules",
+    -- captchapage
+    config_captchapage = base_dir.."/nginx/html/captcha.html",
     -- enable/disable white url
     config_white_url_check = "on",
     -- enable/disable white ip
@@ -46,14 +52,16 @@ local _M = {
     -- enable/disable cc filtering
     config_cc_check = "on",
     -- cc rate the xxx of xxx seconds
-    config_cc_rate = "10/60",
+    config_cc_rate = "5/10",
     -- enable/disable post filtering
     config_post_check = "on",
     -- config waf output redirect/html/jinghuashuiyue
     config_waf_model = "html",
     -- if config_waf_output ,setting url
-    config_waf_redirect_url = "http://xsec.io",
+    config_waf_redirect_url = "",
+
     config_expire_time = 600,
+
     config_output_html=[[
     <html>
     <head>
@@ -140,6 +148,57 @@ local _M = {
       </body>
     </html>
     ]],
+    config_captcha_html=[[
+    <html>
+		<head>
+			<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+			<title>请输入验证码</title>
+			<style>
+				body { font-family: Tahoma, Verdana, Arial, sans-serif; } 
+				.head_title{ margin-top:100px; font-family:"微软雅黑"; font-size:50px; font-weight:lighter;}	
+				p{font-family:"微软雅黑"; font-size:16px; font-weight:lighter; color:#666666;}
+				.btn{ margin-left:15px; margin-top:5px; width:85px; height:30px; background:#56c458;font-family:"微软雅黑"; font-size:16px; color:#FFFFFF; border:0;}
+				.inp_s{ margin-left:15px; margin-top:5px; width:200px; height:30px;}
+				.yz{ margin-top:20px; width:90px; height:30px;}
+				.fors{ margin:0 auto;width:500px; height:40px;}
+			</style>
+		</head>
+		<body>
+			<div align="center">
+				<p><h1 class="head_title">很抱歉...</h1></p>
+				<p>您的查询看起来类似于来自计算机软件的自动请求。为了保护我们的用户，请原谅我们现在暂时不能处理您的请求。 </p>
+				<p>要继续访问网页，请输入下面所示字符：</p>
+				<form id="fors" align="center">
+					<img class="yz" src="/captcha/Ashx/System/VaidCode.ashx" onclick="this.src='/captcha/Ashx/System/VaidCode.ashx?flag='+Math.random()" alt="Captcha image">
+          <input class="inp_s" id="inp" type="text" name="code" />
+          <input class="inp_s" type="text" name="type" value="check" style="display:none;" />
+          <input class="btn" id="subt" type="submit" value="确定" />
+				</form>
+			</div>
+			<script src="//lib.sinaapp.com/js/jquery/1.9.1/jquery-1.9.1.min.js"></script>
+      <script>
+      $(function () {
+        $('#fors').submit(function () {
+				htmlobj=$.ajax({
+						Cache: false,
+						type: "GET",
+						url: "/captcha/ashx/system/nginxauth.ashx",
+						data: $('#fors').serialize(),
+						async: false,
+						error: function (request) {
+							alert("error");
+						},
+						success: function (data) {
+							alert(data);
+              window.history.back(-1);
+						},
+				  });
+				});
+      });
+			</script>
+		</body>
+	  </html>
+    ]],
 }
 
-return _M
+return config

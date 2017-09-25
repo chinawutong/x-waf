@@ -26,13 +26,13 @@ local unescape = ngx.unescape_uri
 local config = require("config")
 local util = require("util")
 
-local _M = {
+local waf = {
     RULES = {}
 }
 
-function _M.load_rules()
-    _M.RULES = util.get_rules(config.config_rule_dir)
-    for k, v in pairs(_M.RULES)
+function waf.load_rules()
+    waf.RULES = util.get_rules(config.config_rule_dir)
+    for k, v in pairs(waf.RULES)
     do
         ngx.log(ngx.INFO, string.format("%s Rule Set", k))
         for kk, vv in pairs(v)
@@ -40,18 +40,18 @@ function _M.load_rules()
             ngx.log(ngx.INFO, string.format("index:%s, Rule:%s", kk, vv))
         end
     end
-    return _M.RULES
+    return waf.RULES
 end
 
-function _M.get_rule(rule_file_name)
+function waf.get_rule(rule_file_name)
     ngx.log(ngx.DEBUG, rule_file_name)
-    return _M.RULES[rule_file_name]
+    return waf.RULES[rule_file_name]
 end
 
 -- white ip check
-function _M.white_ip_check()
+function waf.white_ip_check()
     if config.config_white_ip_check == "on" then
-        local IP_WHITE_RULE = _M.get_rule('whiteip.rule')
+        local IP_WHITE_RULE = waf.get_rule('whiteip.rule')
         local WHITE_IP = util.get_client_ip()
         if IP_WHITE_RULE ~= nil then
             for _, rule in pairs(IP_WHITE_RULE) do
@@ -65,7 +65,7 @@ function _M.white_ip_check()
 end
 
 -- Bad guys check
-function _M.bad_guy_check()
+function waf.bad_guy_check()
     local client_ip = util.get_client_ip()
     local ret = false
     if client_ip ~= "" then
@@ -79,9 +79,9 @@ end
 
 
 -- deny black ip
-function _M.black_ip_check()
+function waf.black_ip_check()
     if config.config_black_ip_check == "on" then
-        local IP_BLACK_RULE = _M.get_rule('blackip.rule')
+        local IP_BLACK_RULE = waf.get_rule('blackip.rule')
         local BLACK_IP = util.get_client_ip()
         if IP_BLACK_RULE ~= nil then
             for _, rule in pairs(IP_BLACK_RULE) do
@@ -98,9 +98,9 @@ function _M.black_ip_check()
 end
 
 -- allow white url
-function _M.white_url_check()
+function waf.white_url_check()
     if config.config_white_url_check == "on" then
-        local URL_WHITE_RULES = _M.get_rule('writeurl.rule')
+        local URL_WHITE_RULES = waf.get_rule('writeurl.rule')
         local REQ_URI = ngx.var.request_uri
         if URL_WHITE_RULES ~= nil then
             for _,rule in pairs(URL_WHITE_RULES) do
@@ -113,7 +113,7 @@ function _M.white_url_check()
 end
 
 -- deny cc attack
-function _M.cc_attack_check()
+function waf.cc_attack_check()
     if config.config_cc_check == "on" then
         local ATTACK_URI = ngx.var.uri
         local CC_TOKEN = util.get_client_ip() .. ATTACK_URI
@@ -123,10 +123,29 @@ function _M.cc_attack_check()
         local req,_ = limit:get(CC_TOKEN)
         if req then
             if req > CCcount then
-                util.log_record(config.config_log_dir, 'CC_Attack', ngx.var.request_uri, "-", "-")
                 if config.config_waf_enable == "on" then
-                    ngx.exit(403)
+                    ngx.header.content_type = "text/html"
+                    ngx.print(string.format(config.config_captcha_html))
+                    ngx.exit(200)
+                    util.log_record(config.config_log_dir, 'captcha request', ngx.var.request_uri, "-", "-")
                 end
+
+                if v.action == "set_cookie" then
+				    local token = ngx.md5(v.set_cookie[1] .. ip)
+				    local token_name = v.set_cookie[2] or "token"
+				    -- 没有设置 tokenname 默认就是 token
+	                if ngx_var["cookie_"..token_name] ~= token then
+	                    ngx.header["Set-Cookie"] = {token_name.."=" .. token}
+	                    if method == "POST" then
+	                 	return ngx.redirect(request_uri,307)
+	                    else
+	                     	return ngx.redirect(request_uri)
+	                    end
+	                end
+			    elseif v.action == "set_url" then
+                end
+
+
             else
                 limit:incr(CC_TOKEN, 1)
             end
@@ -138,9 +157,9 @@ function _M.cc_attack_check()
 end
 
 -- deny cookie
-function _M.cookie_attack_check()
+function waf.cookie_attack_check()
     if config.config_cookie_check == "on" then
-        local COOKIE_RULES = _M.get_rule('cookie.rule')
+        local COOKIE_RULES = waf.get_rule('cookie.rule')
         local USER_COOKIE = ngx.var.http_cookie
         if USER_COOKIE ~= nil then
             for _, rule in pairs(COOKIE_RULES) do
@@ -158,9 +177,9 @@ function _M.cookie_attack_check()
 end
 
 -- deny url
-function _M.url_attack_check()
+function waf.url_attack_check()
     if config.config_url_check == "on" then
-        local URL_RULES = _M.get_rule('url.rule')
+        local URL_RULES = waf.get_rule('url.rule')
         local REQ_URI = ngx.var.request_uri
         for _,rule in pairs(URL_RULES) do
             if rule ~="" and rulematch(REQ_URI,rule,"jo") then
@@ -176,9 +195,9 @@ function _M.url_attack_check()
 end
 
 -- deny url args
-function _M.url_args_attack_check()
+function waf.url_args_attack_check()
     if config.config_url_args_check == "on" then
-        local ARGS_RULES = _M.get_rule('args.rule')
+        local ARGS_RULES = waf.get_rule('args.rule')
         for _,rule in pairs(ARGS_RULES) do
             local REQ_ARGS = ngx.req.get_uri_args()
             for key, val in pairs(REQ_ARGS) do
@@ -204,9 +223,9 @@ function _M.url_args_attack_check()
 end
 
 -- deny user agent
-function _M.user_agent_attack_check()
+function waf.user_agent_attack_check()
     if config.config_user_agent_check == "on" then
-        local USER_AGENT_RULES = _M.get_rule('useragent.rule')
+        local USER_AGENT_RULES = waf.get_rule('useragent.rule')
         local USER_AGENT = ngx.var.http_user_agent
         if USER_AGENT ~= nil then
             for _, rule in pairs(USER_AGENT_RULES) do
@@ -224,10 +243,10 @@ function _M.user_agent_attack_check()
 end
 
 -- deny post
-function _M.post_attack_check()
+function waf.post_attack_check()
     if config.config_post_check == "on" then
         ngx.req.read_body()
-        local POST_RULES = _M.get_rule('post.rule')
+        local POST_RULES = waf.get_rule('post.rule')
         for _, rule in pairs(POST_RULES) do
             local POST_ARGS = ngx.req.get_post_args() or {}
             for _, v in pairs(POST_ARGS) do
@@ -251,28 +270,28 @@ function _M.post_attack_check()
 end
 
 -- start change to jinghuashuiyue mode, set in vhosts's location segument
-function _M.start_jingshuishuiyue()
+function waf.start_jingshuishuiyue()
     local host = util.get_server_host()
     ngx.var.target = string.format("proxy_%s", host)
-    if host and _M.bad_guy_check() then
+    if host and waf.bad_guy_check() then
         ngx.var.target = string.format("unreal_%s", host)
     end
 end
 
 -- waf start
-function _M.check()
-    if _M.white_ip_check() then
-    elseif _M.black_ip_check() then
-    elseif _M.user_agent_attack_check() then
-    elseif _M.white_url_check() then
-    elseif _M.url_attack_check() then
-    elseif _M.cc_attack_check() then
-    elseif _M.cookie_attack_check() then
-    elseif _M.url_args_attack_check() then
-    elseif _M.post_attack_check() then
+function waf.check()
+    if waf.white_ip_check() then
+    elseif waf.black_ip_check() then
+    elseif waf.user_agent_attack_check() then
+    elseif waf.white_url_check() then
+    elseif waf.url_attack_check() then
+    elseif waf.cc_attack_check() then
+    elseif waf.cookie_attack_check() then
+    elseif waf.url_args_attack_check() then
+    elseif waf.post_attack_check() then
     else
         return
     end
 end
 
-return _M
+return waf
